@@ -733,157 +733,120 @@ export function InboxView() {
               <div
                 key={ticket.id}
                 onClick={() => { navigate(`/inbox/${ticket.id}`); setReplyText(''); if (isMobile) setMobilePanel('thread'); if (leftOverlayOpen) setLeftOverlayOpen(false); }}
-                className={`group px-3 py-2.5 border-b border-slate-100 cursor-pointer transition-colors relative ${
+                className={`group px-3 py-3 border-b border-slate-100 cursor-pointer transition-all duration-150 relative flex gap-2.5 ${
                   isActive
-                    ? 'bg-indigo-50 border-l-4 border-l-indigo-600'
-                    : `hover:bg-slate-50 border-l-4 ${
-                        ticket.status === 'urgent' ? 'border-l-red-500 bg-red-50/30'
-                        : ticket.status === 'warning' ? 'border-l-amber-400 bg-amber-50/20'
+                    ? 'bg-indigo-50/80 border-l-[3px] border-l-indigo-500'
+                    : `border-l-[3px] hover:bg-slate-50 hover:translate-x-0.5 ${
+                        ticket.status === 'urgent' ? 'border-l-red-400'
+                        : ticket.status === 'warning' ? 'border-l-amber-400'
                         : 'border-l-transparent'
                       }`
                 }`}
               >
-                <div className="flex justify-between items-center mb-1 gap-2">
-                  {/* Left: guest name + AI toggle + status */}
-                  <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-                    {unread && !isActive && (
-                      <span className="w-2 h-2 bg-indigo-500 rounded-full shrink-0 animate-in fade-in duration-300" />
-                    )}
-                    <span className={`font-semibold text-sm truncate ${unread && !isActive ? 'text-slate-900' : ''}`}>{ticket.guestName}</span>
+                {/* Avatar */}
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0 mt-0.5 ${
+                  ticket.status === 'urgent' ? 'bg-red-400' : ticket.status === 'warning' ? 'bg-amber-400' : 'bg-slate-300'
+                }`}>
+                  {ticket.guestName.charAt(0)}
+                </div>
 
-                    {/* AI Toggle inline */}
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  {/* Row 1: name + SLA */}
+                  <div className="flex items-center justify-between gap-2 mb-0.5">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      {unread && !isActive && <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full shrink-0" />}
+                      <span className={`text-sm truncate ${unread && !isActive ? 'font-bold text-slate-900' : 'font-semibold text-slate-800'}`}>{ticket.guestName}</span>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(true); navigate(`/inbox/${ticket.id}`); }}
+                        className="w-5 h-5 rounded flex items-center justify-center text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                        title="Delete thread"
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                      <span className={`text-[11px] font-semibold tabular-nums ${
+                        ticket.status === 'urgent' ? 'text-red-500' : ticket.status === 'warning' ? 'text-amber-500' : 'text-slate-400'
+                      }`}>{ticket.sla}</span>
+                    </div>
+                  </div>
+
+                  {/* Row 2: badges inline */}
+                  <div className="flex items-center gap-1 mb-1 flex-nowrap overflow-hidden">
+                    {/* AI Toggle */}
                     {(() => {
                       const hostAutoReply = hostSettings.find(s => s.hostId === ticket.host.id)?.autoReply ?? false;
                       const aiOff = !hostAutoReply || isPaused;
                       return (
-                        <AnimatePresence mode="wait">
-                          <motion.button
-                            key={aiOff ? 'off' : 'on'}
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            transition={{ duration: 0.15 }}
-                            onClick={(e: React.MouseEvent) => {
-                              e.stopPropagation();
-                              if (!hostAutoReply) {
-                                updateHostSettings(ticket.host.id, { autoReply: true });
-                                if (isPaused) toggleAutoReplyPause(ticket.id);
-                                if (isHandedOff) setAutoReplyHandedOff(ticket.id, false);
-                                toast.success('Auto-reply enabled', { description: `AI is now active for ${ticket.host.name}.`, duration: 3000 });
-                              } else if (isPaused || isHandedOff) {
-                                if (isPaused) toggleAutoReplyPause(ticket.id);
-                                if (isHandedOff) setAutoReplyHandedOff(ticket.id, false);
-                                toast.success('AI enabled', { description: `Auto-reply active for ${ticket.guestName}.`, duration: 3000 });
-                              } else {
-                                toggleAutoReplyPause(ticket.id);
-                                toast('AI paused', { description: `You're handling ${ticket.guestName} manually.`, duration: 3000 });
-                              }
-                            }}
-                            className={`inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full border transition-colors cursor-pointer shrink-0 ${
-                              !hostAutoReply
-                                ? 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-700 hover:border-slate-300'
-                                : aiOff
-                                ? 'bg-slate-100 text-slate-400 border-slate-200 hover:bg-violet-50 hover:text-violet-600 hover:border-violet-300'
-                                : 'bg-violet-50 text-violet-600 border-violet-200 hover:bg-slate-100 hover:text-slate-400 hover:border-slate-200'
-                            }`}
-                            title={!hostAutoReply ? 'Click to enable AI' : aiOff ? 'Click to enable AI' : 'Click to pause AI'}
-                          >
-                            {aiOff ? <><PauseCircle size={8} /> AI Off</> : <><Zap size={8} /> AI On</>}
-                          </motion.button>
-                        </AnimatePresence>
+                        <motion.button
+                          key={aiOff ? 'off' : 'on'}
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.15 }}
+                          onClick={(e: React.MouseEvent) => {
+                            e.stopPropagation();
+                            if (!hostAutoReply) {
+                              updateHostSettings(ticket.host.id, { autoReply: true });
+                              if (isPaused) toggleAutoReplyPause(ticket.id);
+                              if (isHandedOff) setAutoReplyHandedOff(ticket.id, false);
+                              toast.success('Auto-reply enabled', { description: `AI is now active for ${ticket.host.name}.`, duration: 3000 });
+                            } else if (isPaused || isHandedOff) {
+                              if (isPaused) toggleAutoReplyPause(ticket.id);
+                              if (isHandedOff) setAutoReplyHandedOff(ticket.id, false);
+                              toast.success('AI enabled', { description: `Auto-reply active for ${ticket.guestName}.`, duration: 3000 });
+                            } else {
+                              toggleAutoReplyPause(ticket.id);
+                              toast('AI paused', { description: `You're handling ${ticket.guestName} manually.`, duration: 3000 });
+                            }
+                          }}
+                          className={`inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full border transition-colors cursor-pointer shrink-0 ${
+                            !hostAutoReply || aiOff
+                              ? 'bg-slate-100 text-slate-400 border-slate-200 hover:border-violet-300 hover:text-violet-500'
+                              : 'bg-violet-50 text-violet-600 border-violet-200 hover:bg-slate-100 hover:text-slate-400'
+                          }`}
+                        >
+                          {aiOff ? <><PauseCircle size={8} /> AI Off</> : <><Zap size={8} /> AI On</>}
+                        </motion.button>
                       );
                     })()}
 
-                    {/* Status badge inline (hide if resolved) */}
+                    {/* Status badge */}
                     {(() => {
                       const agentClearedHandoff = autoReplyHandedOff[ticket.id] === false;
                       const effectiveStatus = isHandedOff
                         ? 'handed-off'
                         : (agentClearedHandoff && systemStatus === 'handed-off') ? null : systemStatus;
-
-                      // Hide status badge for resolved tickets
                       if (effectiveStatus === 'ai-handled') return null;
-
                       const statusLabel = effectiveStatus === 'handed-off' ? 'Your Turn'
                         : effectiveStatus === 'partial' ? 'Follow-up'
                         : effectiveStatus === 'safety' ? 'Safety Alert'
                         : null;
                       if (!statusLabel) return null;
-
-                      const StatusIcon = effectiveStatus === 'handed-off' ? ArrowRightLeft
-                        : effectiveStatus === 'partial' ? AlertCircle
-                        : ShieldAlert;
-                      const statusColor = effectiveStatus === 'safety' ? 'bg-red-50 text-red-600 border-red-200'
-                        : effectiveStatus === 'partial' ? 'bg-sky-50 text-sky-600 border-sky-200'
-                        : 'bg-amber-50 text-amber-600 border-amber-200';
-
+                      const StatusIcon = effectiveStatus === 'handed-off' ? ArrowRightLeft : effectiveStatus === 'partial' ? AlertCircle : ShieldAlert;
+                      const statusColor = effectiveStatus === 'safety' ? 'bg-red-50 text-red-500 border-red-200'
+                        : effectiveStatus === 'partial' ? 'bg-sky-50 text-sky-500 border-sky-200'
+                        : 'bg-amber-50 text-amber-500 border-amber-200';
                       return (
-                        <AnimatePresence mode="wait">
-                          <motion.span
-                            key={effectiveStatus}
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            transition={{ duration: 0.15 }}
-                            className={`inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full border shrink-0 ${statusColor}`}
-                          >
-                            <StatusIcon size={8} /> {statusLabel}
-                          </motion.span>
-                        </AnimatePresence>
+                        <motion.span key={effectiveStatus} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.15 }}
+                          className={`inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full border shrink-0 ${statusColor}`}>
+                          <StatusIcon size={8} /> {statusLabel}
+                        </motion.span>
                       );
                     })()}
+
+                    {/* Meta: property · time */}
+                    <span className="text-[10px] text-slate-400 truncate ml-0.5">{ticket.property} · {timeSinceGuest}</span>
                   </div>
 
-                  {/* Right: delete button + time */}
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowDeleteConfirm(true);
-                        navigate(`/inbox/${ticket.id}`);
-                      }}
-                      className="w-5 h-5 rounded flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
-                      title="Delete thread"
-                    >
-                      <Trash2 size={11} />
-                    </button>
-                    <span className={`text-xs font-bold flex items-center gap-1 ${
-                      ticket.status === 'urgent' ? 'text-red-600' : ticket.status === 'warning' ? 'text-amber-600' : 'text-slate-500'
-                    }`}><Clock size={12} /> {ticket.sla}</span>
-                  </div>
-                </div>
-                {/* Compact meta line: host · property · stats */}
-                <div className="text-[10px] text-slate-400 mb-1.5 flex items-center gap-1 truncate">
-                  <Briefcase size={9} className="shrink-0" />
-                  <span className="truncate">{ticket.host.name} · {ticket.property}</span>
-                  <span className="text-slate-300 shrink-0">·</span>
-                  <span className="shrink-0">{guestMsgCount}msg</span>
-                  {timeSinceGuest && (
-                    <span className={`shrink-0 ${
-                      timeSinceGuest.includes('just now') || (timeSinceGuest.includes('m ago') && parseInt(timeSinceGuest) <= 5)
-                        ? 'text-emerald-500 font-semibold' 
-                        : timeSinceGuest.includes('h ago') && parseInt(timeSinceGuest) >= 2
-                        ? 'text-amber-500 font-semibold'
-                        : ''
-                    }`}>
-                      · {timeSinceGuest}
-                    </span>
-                  )}
-                </div>
-
-                {/* Last message preview — shows whoever sent most recently */}
-                <div className={`text-xs leading-snug p-1.5 rounded border shadow-sm line-clamp-2 ${
-                  unread && !isActive
-                    ? 'text-slate-800 bg-white border-indigo-200'
-                    : 'text-slate-600 bg-white border-slate-100'
-                }`}>
-                  {previewSender && (
-                    <span className={`font-medium mr-0.5 ${
-                      lastNonSystemMsg?.sender === 'guest' ? 'text-slate-500'
-                      : lastNonSystemMsg?.sender === 'bot' ? 'text-violet-500'
-                      : 'text-indigo-500'
-                    }`}>{previewSender}:</span>
-                  )}{' '}{previewText}
+                  {/* Row 3: preview */}
+                  <p className={`text-[11px] leading-snug line-clamp-1 ${unread && !isActive ? 'text-slate-600' : 'text-slate-400'}`}>
+                    {previewSender && (
+                      <span className={`font-medium ${
+                        lastNonSystemMsg?.sender === 'bot' ? 'text-violet-400' : 'text-slate-400'
+                      }`}>{previewSender}: </span>
+                    )}{previewText}
+                  </p>
                 </div>
                 {/* AI processing indicator */}
                 <AnimatePresence>
