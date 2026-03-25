@@ -120,6 +120,10 @@ interface AppState {
   setDraftReply: (ticketId: string, text: string) => void;
   clearDraftReply: (ticketId: string) => void;
 
+  // Incident log notes per ticket (BPO Step 5 — remarks field)
+  ticketNotes: Record<string, string>;
+  updateTicketNotes: (ticketId: string, notes: string) => void;
+
   // Tasks
   tasks: Task[];
   setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
@@ -416,7 +420,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const [importAiModel, setImportAiModelRaw] = useState(() => {
-    try { return localStorage.getItem('importAiModel') || 'anthropic/claude-3.5-sonnet'; } catch { return 'anthropic/claude-3.5-sonnet'; }
+    try { return localStorage.getItem('importAiModel') || 'google/gemini-3.1-flash-lite-preview'; } catch { return 'google/gemini-3.1-flash-lite-preview'; }
   });
   const setImportAiModel = useCallback((v: string) => {
     setImportAiModelRaw(v);
@@ -461,6 +465,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [draftReplies, setDraftRepliesState] = useState<Record<string, string>>(() => {
     try { const s = localStorage.getItem('draftReplies'); return s ? JSON.parse(s) : {}; } catch { return {}; }
   });
+
+  // Incident log notes per ticket (BPO Step 5 — remarks field), persisted to localStorage
+  const [ticketNotes, setTicketNotesState] = useState<Record<string, string>>(() => {
+    try { const s = localStorage.getItem('ticketNotes'); return s ? JSON.parse(s) : {}; } catch { return {}; }
+  });
+  const updateTicketNotes = useCallback((ticketId: string, notes: string) => {
+    setTicketNotesState(prev => {
+      const next = { ...prev, [ticketId]: notes };
+      try { localStorage.setItem('ticketNotes', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, []);
 
   // ─── Auto-reply processing / cancellation / pause state ───────
   const [autoReplyProcessing, setAutoReplyProcessingState] = useState<Record<string, boolean>>({});
@@ -1027,6 +1043,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setMaskedApiKey(settings.maskedApiKey);
       setAiModelRaw(settings.model || 'openai/gpt-4o-mini');
       try { localStorage.setItem('aiModel', settings.model || 'openai/gpt-4o-mini'); } catch {}
+      if (settings.importModel) {
+        setImportAiModelRaw(settings.importModel);
+        try { localStorage.setItem('importAiModel', settings.importModel); } catch {}
+      }
     } catch (err) {
       console.error('Failed to fetch AI settings:', err);
     } finally {
@@ -1069,6 +1089,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const saveImportAiModel = useCallback(async (model: string) => {
     setImportAiModel(model);
+    try {
+      const { saveAISettings } = await getApiClient();
+      await saveAISettings({ importModel: model });
+    } catch (err) {
+      console.error('Failed to save import AI model:', err);
+      throw err;
+    }
   }, [setImportAiModel]);
 
   const clearAIApiKey = useCallback(async () => {
@@ -1285,6 +1312,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       activeHostFilter, setActiveHostFilter,
       tickets, resolveTicket, addMessageToTicket, injectGuestMessage, addBotMessage, addSystemMessage, addMultipleMessages, escalateTicketStatus, escalateTicketWithUrgency, deescalateTicket, deleteMessageFromTicket, deleteThread,
       draftReplies, setDraftReply, clearDraftReply,
+      ticketNotes, updateTicketNotes,
       tasks, setTasks, addTask, updateTaskStatus, deleteTask,
       kbEntries, addKBEntry, updateKBEntry, deleteKBEntry, deleteKBEntriesBySource,
       properties, addProperty, updatePropertyStatus, updatePropertyMeta, deleteProperty,

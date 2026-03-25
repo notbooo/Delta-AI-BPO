@@ -23,6 +23,7 @@ app.use(
 // ─── KV Key Constants ────────────────────────────────────
 const KV_AI_API_KEY = "ai_config:api_key";
 const KV_AI_MODEL = "ai_config:model";
+const KV_AI_IMPORT_MODEL = "ai_config:import_model";
 const KV_AI_SETTINGS_PREFIX = "ai_config:";
 const KV_PREFS_PREFIX = "agent_prefs:";
 const KV_CHAT_PREFIX = "ask_ai_chat:";
@@ -36,9 +37,10 @@ app.get("/make-server-ab702ee0/health", (c) => {
 // Returns the saved AI configuration (API key masked, model name)
 app.get("/make-server-ab702ee0/ai/settings", async (c) => {
   try {
-    const [apiKey, model] = await Promise.all([
+    const [apiKey, model, importModel] = await Promise.all([
       kv.get(KV_AI_API_KEY),
       kv.get(KV_AI_MODEL),
+      kv.get(KV_AI_IMPORT_MODEL),
     ]);
 
     const rawKey = typeof apiKey === "string" ? apiKey : "";
@@ -50,6 +52,7 @@ app.get("/make-server-ab702ee0/ai/settings", async (c) => {
       hasApiKey: !!rawKey,
       maskedApiKey: maskedKey,
       model: (typeof model === "string" ? model : "") || "openai/gpt-4o-mini",
+      importModel: (typeof importModel === "string" ? importModel : "") || "google/gemini-3.1-flash-lite-preview",
     });
   } catch (err: any) {
     console.log(`Error fetching AI settings: ${err.message}`);
@@ -62,7 +65,7 @@ app.get("/make-server-ab702ee0/ai/settings", async (c) => {
 app.put("/make-server-ab702ee0/ai/settings", async (c) => {
   try {
     const body = await c.req.json();
-    const { apiKey, model } = body;
+    const { apiKey, model, importModel } = body;
 
     const keys: string[] = [];
     const values: any[] = [];
@@ -77,6 +80,11 @@ app.put("/make-server-ab702ee0/ai/settings", async (c) => {
       values.push(model.trim());
     }
 
+    if (typeof importModel === "string" && importModel.trim()) {
+      keys.push(KV_AI_IMPORT_MODEL);
+      values.push(importModel.trim());
+    }
+
     if (keys.length === 0) {
       return c.json({ error: "No valid fields to update" }, 400);
     }
@@ -86,6 +94,7 @@ app.put("/make-server-ab702ee0/ai/settings", async (c) => {
     // Return current state
     const savedKey = typeof apiKey === "string" ? apiKey : (await kv.get(KV_AI_API_KEY) || "");
     const savedModel = typeof model === "string" ? model : (await kv.get(KV_AI_MODEL) || "openai/gpt-4o-mini");
+    const savedImportModel = typeof importModel === "string" ? importModel : (await kv.get(KV_AI_IMPORT_MODEL) || "google/gemini-3.1-flash-lite-preview");
     const maskedKey = savedKey
       ? `${savedKey.slice(0, 8)}...${savedKey.slice(-4)}`
       : "";
@@ -94,6 +103,7 @@ app.put("/make-server-ab702ee0/ai/settings", async (c) => {
       hasApiKey: !!savedKey,
       maskedApiKey: maskedKey,
       model: savedModel,
+      importModel: savedImportModel,
     });
   } catch (err: any) {
     console.log(`Error saving AI settings: ${err.message}`);

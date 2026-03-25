@@ -1539,6 +1539,7 @@ Output ONLY a JSON object. For regular fields use flat keys. For FAQs use a "faq
               {Object.entries(importPreview.data).map(([key, value]) => {
                 const label = importPreview.schema[key]?.label || key;
                 const current = formData[key];
+                if (current && String(current) === String(value)) return null;
                 return (
                   <div key={key} className="p-3 rounded-lg border border-slate-200 bg-slate-50 text-xs">
                     <p className="font-semibold text-slate-600">{label}</p>

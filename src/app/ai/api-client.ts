@@ -28,6 +28,7 @@ export interface AISettings {
   hasApiKey: boolean;
   maskedApiKey: string;
   model: string;
+  importModel: string;
 }
 
 export interface AIProxyResult {
@@ -49,7 +50,7 @@ export async function getAISettings(): Promise<AISettings> {
   return json;
 }
 
-export async function saveAISettings(updates: { apiKey?: string; model?: string }): Promise<AISettings> {
+export async function saveAISettings(updates: { apiKey?: string; model?: string; importModel?: string }): Promise<AISettings> {
   const res = await fetch(`${BASE_URL}/ai/settings`, {
     method: 'PUT',
     headers: headers(),
@@ -373,7 +374,7 @@ export async function importDocumentAI(opts: {
     systemPrompt: opts.systemPrompt,
     userPrompt: opts.userPrompt,
     model: opts.model,
-    temperature: 0.3,
+    temperature: 0.2,
     maxTokens: 3000,
     touchpoint: 'kb-document-import',
     attachment: opts.attachment,
