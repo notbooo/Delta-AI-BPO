@@ -7,3 +7,4 @@ vercel.json
 .DS_Store
 *.log
 .vite/
+.vercel

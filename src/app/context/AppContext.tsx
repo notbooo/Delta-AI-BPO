@@ -59,6 +59,7 @@ export interface HostSettings {
     showTicketDistribution: boolean;  // Show Ticket Distribution settings tab
     showQualityPerformance: boolean;  // Show Quality & Performance settings tab
     showZoomOverride: boolean;        // Show zoom control in TopBar
+    guestNeedsMode: 'ai-context' | 'kb-scoring'; // How "What the Guest Needs" works
   };
 }
 
@@ -249,6 +250,7 @@ function makeDefaultHostSettings(h: Host): HostSettings {
       showTicketDistribution: false,
       showQualityPerformance: false,
       showZoomOverride: false,
+      guestNeedsMode: 'ai-context',
     },
   };
 }

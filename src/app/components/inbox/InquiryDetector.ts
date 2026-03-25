@@ -445,6 +445,10 @@ export async function classifyWithLLM(
     if (jsonText.startsWith('```')) {
       jsonText = jsonText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
     }
+    // Fix unescaped newlines inside JSON string values (model sometimes outputs real newlines)
+    jsonText = jsonText.replace(/"(?:[^"\\]|\\.)*"/gs, m =>
+      m.replace(/\n/g, '\\n').replace(/\r/g, '')
+    );
 
     const parsed = JSON.parse(jsonText) as Array<{
       type: string;
