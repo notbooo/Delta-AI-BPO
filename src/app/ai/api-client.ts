@@ -2,18 +2,24 @@
  * AI API Client — Frontend interface to the backend AI proxy.
  *
  * All OpenRouter calls go through the server so the API key
- * never reaches the browser. Settings are persisted in the
- * Supabase KV store.
+ * never reaches the browser. Settings are persisted in Supabase.
  */
 
 import { projectId, publicAnonKey } from '/utils/supabase/info';
 import { startDebugEntry, updateDebugEntry, type AIDebugEntry } from './debug-store';
 
 const BASE_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ab702ee0`;
+const SUPABASE_REST_URL = `https://${projectId}.supabase.co/rest/v1`;
 
 const headers = () => ({
   'Content-Type': 'application/json',
   'Authorization': `Bearer ${publicAnonKey}`,
+});
+
+const getPrefsHeaders = () => ({
+  'Content-Type': 'application/json',
+  'Authorization': `Bearer ${publicAnonKey}`,
+  'Prefer': 'return=representation',
 });
 
 // ─── Types ──────────────────────────────────────────────
@@ -72,44 +78,49 @@ export async function clearAIKey(): Promise<AISettings> {
 
 // ─── Agent Preferences ──────────────────────────────────
 
-const PREFS_LS_KEY = 'appPrefs';
+// Supabase client for direct persistence
+let supabaseClient: any = null;
+const getSupabaseClient = async () => {
+  if (supabaseClient) return supabaseClient;
+  const { createClient } = await import('@supabase/supabase-js');
+  supabaseClient = createClient(
+    `https://${projectId}.supabase.co`,
+    publicAnonKey
+  );
+  return supabaseClient;
+};
 
 export async function getPreferences(): Promise<Record<string, any>> {
-  // Try backend first
   try {
-    const res = await fetch(`${BASE_URL}/preferences`, { headers: headers() });
-    const json = await res.json();
-    if (res.ok) {
-      // Sync to localStorage as cache
-      try { localStorage.setItem(PREFS_LS_KEY, JSON.stringify(json)); } catch {}
-      return json;
-    }
-  } catch {}
-  // Fallback: localStorage
-  try {
-    const stored = localStorage.getItem(PREFS_LS_KEY);
-    return stored ? JSON.parse(stored) : {};
-  } catch { return {}; }
+    const client = await getSupabaseClient();
+    const { data, error } = await client
+      .from('preferences')
+      .select('*')
+      .limit(1)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows
+    return data?.data || {};
+  } catch (err: any) {
+    console.error('Failed to fetch preferences:', err);
+    return {};
+  }
 }
 
 export async function savePreferences(prefs: Record<string, any>): Promise<{ saved: string[] }> {
-  // Always persist to localStorage immediately
-  try { localStorage.setItem(PREFS_LS_KEY, JSON.stringify(prefs)); } catch {}
-  // Best-effort backend sync
   try {
-    const res = await fetch(`${BASE_URL}/preferences`, {
-      method: 'PUT',
-      headers: headers(),
-      body: JSON.stringify(prefs),
-    });
-    const json = await res.json();
-    if (!res.ok) {
-      console.error('Backend preference save failed, using localStorage:', json);
-    }
-    return json;
-  } catch (err) {
-    console.error('Backend preference sync failed, data saved to localStorage:', err);
+    const client = await getSupabaseClient();
+
+    // Try upsert: insert or update
+    const { error } = await client
+      .from('preferences')
+      .upsert({ id: 1, data: prefs }, { onConflict: 'id' });
+
+    if (error) throw error;
     return { saved: Object.keys(prefs) };
+  } catch (err: any) {
+    console.error('Failed to save preferences:', err);
+    throw new Error(err.message || 'Failed to save preferences');
   }
 }
 
