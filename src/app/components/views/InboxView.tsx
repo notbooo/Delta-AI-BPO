@@ -743,13 +743,98 @@ export function InboxView() {
                       }`
                 }`}
               >
-                <div className="flex justify-between items-start mb-1">
-                  <div className="flex items-center gap-1.5 min-w-0">
+                <div className="flex justify-between items-center mb-1 gap-2">
+                  {/* Left: guest name + AI toggle + status */}
+                  <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                     {unread && !isActive && (
                       <span className="w-2 h-2 bg-indigo-500 rounded-full shrink-0 animate-in fade-in duration-300" />
                     )}
                     <span className={`font-semibold text-sm truncate ${unread && !isActive ? 'text-slate-900' : ''}`}>{ticket.guestName}</span>
+
+                    {/* AI Toggle inline */}
+                    {(() => {
+                      const hostAutoReply = hostSettings.find(s => s.hostId === ticket.host.id)?.autoReply ?? false;
+                      const aiOff = !hostAutoReply || isPaused;
+                      return (
+                        <AnimatePresence mode="wait">
+                          <motion.button
+                            key={aiOff ? 'off' : 'on'}
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            transition={{ duration: 0.15 }}
+                            onClick={(e: React.MouseEvent) => {
+                              e.stopPropagation();
+                              if (!hostAutoReply) {
+                                updateHostSettings(ticket.host.id, { autoReply: true });
+                                if (isPaused) toggleAutoReplyPause(ticket.id);
+                                if (isHandedOff) setAutoReplyHandedOff(ticket.id, false);
+                                toast.success('Auto-reply enabled', { description: `AI is now active for ${ticket.host.name}.`, duration: 3000 });
+                              } else if (isPaused || isHandedOff) {
+                                if (isPaused) toggleAutoReplyPause(ticket.id);
+                                if (isHandedOff) setAutoReplyHandedOff(ticket.id, false);
+                                toast.success('AI enabled', { description: `Auto-reply active for ${ticket.guestName}.`, duration: 3000 });
+                              } else {
+                                toggleAutoReplyPause(ticket.id);
+                                toast('AI paused', { description: `You're handling ${ticket.guestName} manually.`, duration: 3000 });
+                              }
+                            }}
+                            className={`inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full border transition-colors cursor-pointer shrink-0 ${
+                              !hostAutoReply
+                                ? 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-700 hover:border-slate-300'
+                                : aiOff
+                                ? 'bg-slate-100 text-slate-400 border-slate-200 hover:bg-violet-50 hover:text-violet-600 hover:border-violet-300'
+                                : 'bg-violet-50 text-violet-600 border-violet-200 hover:bg-slate-100 hover:text-slate-400 hover:border-slate-200'
+                            }`}
+                            title={!hostAutoReply ? 'Click to enable AI' : aiOff ? 'Click to enable AI' : 'Click to pause AI'}
+                          >
+                            {aiOff ? <><PauseCircle size={8} /> AI Off</> : <><Zap size={8} /> AI On</>}
+                          </motion.button>
+                        </AnimatePresence>
+                      );
+                    })()}
+
+                    {/* Status badge inline (hide if resolved) */}
+                    {(() => {
+                      const agentClearedHandoff = autoReplyHandedOff[ticket.id] === false;
+                      const effectiveStatus = isHandedOff
+                        ? 'handed-off'
+                        : (agentClearedHandoff && systemStatus === 'handed-off') ? null : systemStatus;
+
+                      // Hide status badge for resolved tickets
+                      if (effectiveStatus === 'ai-handled') return null;
+
+                      const statusLabel = effectiveStatus === 'handed-off' ? 'Your Turn'
+                        : effectiveStatus === 'partial' ? 'Follow-up'
+                        : effectiveStatus === 'safety' ? 'Safety Alert'
+                        : null;
+                      if (!statusLabel) return null;
+
+                      const StatusIcon = effectiveStatus === 'handed-off' ? ArrowRightLeft
+                        : effectiveStatus === 'partial' ? AlertCircle
+                        : ShieldAlert;
+                      const statusColor = effectiveStatus === 'safety' ? 'bg-red-50 text-red-600 border-red-200'
+                        : effectiveStatus === 'partial' ? 'bg-sky-50 text-sky-600 border-sky-200'
+                        : 'bg-amber-50 text-amber-600 border-amber-200';
+
+                      return (
+                        <AnimatePresence mode="wait">
+                          <motion.span
+                            key={effectiveStatus}
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            transition={{ duration: 0.15 }}
+                            className={`inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full border shrink-0 ${statusColor}`}
+                          >
+                            <StatusIcon size={8} /> {statusLabel}
+                          </motion.span>
+                        </AnimatePresence>
+                      );
+                    })()}
                   </div>
+
+                  {/* Right: delete button + time */}
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       onClick={(e) => {
@@ -784,91 +869,6 @@ export function InboxView() {
                       · {timeSinceGuest}
                     </span>
                   )}
-                </div>
-
-                {/* Two separate chips: ① AI toggle (editable) + ② thread status (read-only) */}
-                <div className="mb-1.5 flex items-center gap-1.5 flex-wrap">
-                  {/* ① AI toggle — clickable on/off pill (disabled when host auto-reply is off) */}
-                  <AnimatePresence mode="wait">
-                    {(() => {
-                      const hostAutoReply = hostSettings.find(s => s.hostId === ticket.host.id)?.autoReply ?? false;
-                      const aiOff = !hostAutoReply || isPaused;
-                      const canToggle = hostAutoReply; // can't toggle if host-level is off
-                      return (
-                        <motion.button
-                          key={aiOff ? 'off' : 'on'}
-                          initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.9 }}
-                          transition={{ duration: 0.15 }}
-                          onClick={(e: React.MouseEvent) => {
-                            e.stopPropagation();
-                            if (!hostAutoReply) {
-                              updateHostSettings(ticket.host.id, { autoReply: true });
-                              if (isPaused) toggleAutoReplyPause(ticket.id);
-                              if (isHandedOff) setAutoReplyHandedOff(ticket.id, false);
-                              toast.success('Auto-reply enabled', { description: `AI is now active for ${ticket.host.name}.`, duration: 3000 });
-                            } else if (isPaused || isHandedOff) {
-                              if (isPaused) toggleAutoReplyPause(ticket.id);
-                              if (isHandedOff) setAutoReplyHandedOff(ticket.id, false);
-                              toast.success('AI enabled', { description: `Auto-reply active for ${ticket.guestName}.`, duration: 3000 });
-                            } else {
-                              toggleAutoReplyPause(ticket.id);
-                              toast('AI paused', { description: `You're handling ${ticket.guestName} manually.`, duration: 3000 });
-                            }
-                          }}
-                          className={`inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full border transition-colors cursor-pointer ${
-                            !hostAutoReply
-                              ? 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-700 hover:border-slate-300'
-                              : aiOff
-                              ? 'bg-slate-100 text-slate-400 border-slate-200 hover:bg-violet-50 hover:text-violet-600 hover:border-violet-300'
-                              : 'bg-violet-50 text-violet-600 border-violet-200 hover:bg-slate-100 hover:text-slate-400 hover:border-slate-200'
-                          }`}
-                          title={!hostAutoReply ? 'Click to enable AI' : aiOff ? 'Click to enable AI' : 'Click to pause AI'}
-                        >
-                          {aiOff ? <><PauseCircle size={8} /> AI Off</> : <><Zap size={8} /> AI On</>}
-                        </motion.button>
-                      );
-                    })()}
-                  </AnimatePresence>
-                  {/* ② Thread status — read-only outcome label */}
-                  <AnimatePresence mode="wait">
-                    {(systemStatus || isHandedOff) && (() => {
-                      // If handed off (state map), override status — prior hand-off
-                      // is still unresolved even if latest system msg is "AI Handled".
-                      // Exception: if agent explicitly cleared handoff (=== false), suppress old 'handed-off' system msg.
-                      const agentClearedHandoff = autoReplyHandedOff[ticket.id] === false;
-                      const effectiveStatus = isHandedOff
-                        ? 'handed-off'
-                        : (agentClearedHandoff && systemStatus === 'handed-off') ? null : systemStatus;
-                      const statusLabel = effectiveStatus === 'ai-handled' ? 'Resolved'
-                        : effectiveStatus === 'handed-off' ? 'Your Turn'
-                        : effectiveStatus === 'partial' ? 'Follow-up'
-                        : effectiveStatus === 'safety' ? 'Safety Alert'
-                        : null;
-                      if (!statusLabel) return null;
-                      const StatusIcon = effectiveStatus === 'ai-handled' ? CheckCircle
-                        : effectiveStatus === 'handed-off' ? ArrowRightLeft
-                        : effectiveStatus === 'partial' ? AlertCircle
-                        : ShieldAlert;
-                      const statusColor = effectiveStatus === 'ai-handled' ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
-                        : effectiveStatus === 'safety' ? 'bg-red-50 text-red-600 border-red-200'
-                        : effectiveStatus === 'partial' ? 'bg-sky-50 text-sky-600 border-sky-200'
-                        : 'bg-amber-50 text-amber-600 border-amber-200';
-                      return (
-                        <motion.span
-                          key={effectiveStatus}
-                          initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.9 }}
-                          transition={{ duration: 0.15 }}
-                          className={`inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full border ${statusColor}`}
-                        >
-                          <StatusIcon size={8} /> {statusLabel}
-                        </motion.span>
-                      );
-                    })()}
-                  </AnimatePresence>
                 </div>
 
                 {/* Last message preview — shows whoever sent most recently */}
@@ -1000,22 +1000,21 @@ export function InboxView() {
                   </button>
                 );
               })()}
-              {/* Thread status (read-only) */}
+              {/* Thread status (read-only) — hide if resolved */}
               {(activeSystemStatus || activeIsHandedOff) && (() => {
                 // Override: if handed off, always show "Your Turn" even if latest msg is "AI Handled"
                 const eff = activeIsHandedOff ? 'handed-off' : activeSystemStatus;
-                const statusLabel = eff === 'ai-handled' ? 'Resolved'
-                  : eff === 'handed-off' ? 'Your Turn'
+                // Hide status badge for resolved tickets
+                if (eff === 'ai-handled') return null;
+                const statusLabel = eff === 'handed-off' ? 'Your Turn'
                   : eff === 'partial' ? 'Follow-up'
                   : eff === 'safety' ? 'Safety Alert'
                   : null;
                 if (!statusLabel) return null;
-                const StatusIcon = eff === 'ai-handled' ? CheckCircle
-                  : eff === 'handed-off' ? ArrowRightLeft
+                const StatusIcon = eff === 'handed-off' ? ArrowRightLeft
                   : eff === 'partial' ? AlertCircle
                   : ShieldAlert;
-                const statusColor = eff === 'ai-handled' ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
-                  : eff === 'safety' ? 'bg-red-50 text-red-600 border-red-200'
+                const statusColor = eff === 'safety' ? 'bg-red-50 text-red-600 border-red-200'
                   : eff === 'partial' ? 'bg-sky-50 text-sky-600 border-sky-200'
                   : 'bg-amber-50 text-amber-600 border-amber-200';
                 return (

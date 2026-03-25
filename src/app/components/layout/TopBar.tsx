@@ -14,6 +14,7 @@ const CONTEXT_DEFAULTS = {
   markAllNotificationsRead: () => {},
   unreadCount: 0,
   agentName: 'Agent',
+  hostSettings: [] as any[],
 };
 
 export function TopBar({ onShowShortcuts }: { onShowShortcuts?: () => void }) {
@@ -26,7 +27,7 @@ export function TopBar({ onShowShortcuts }: { onShowShortcuts?: () => void }) {
   const {
     activeHostFilter, setActiveHostFilter,
     notifications, markNotificationRead, markAllNotificationsRead,
-    unreadCount, agentName,
+    unreadCount, agentName, hostSettings,
   } = ctx ?? CONTEXT_DEFAULTS;
   const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
@@ -66,7 +67,7 @@ export function TopBar({ onShowShortcuts }: { onShowShortcuts?: () => void }) {
       </div>
 
       <div className="flex items-center gap-3">
-        <ZoomControl />
+        {(hostSettings?.[0]?.demoFeatures?.showZoomOverride ?? true) && <ZoomControl />}
 
         {/* Notifications Dropdown */}
         <div className="relative" ref={notifRef}>

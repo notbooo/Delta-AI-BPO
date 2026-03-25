@@ -346,6 +346,7 @@ export function AssistantPanel({ ticket, onComposeReply, onNavigateToKB }: Assis
     setInputText('');
     setIsThinking(false);
     setAiInquiries(null);
+    setChatMessages([]); // Clear old thread's chat immediately
     llmClassifyRef.current = null;
 
     // Load persisted chat from backend
@@ -723,6 +724,8 @@ export function AssistantPanel({ ticket, onComposeReply, onNavigateToKB }: Assis
               const matches = kbMatchesByInquiry[inq.id] || [];
               const formFields = formFieldsByInquiry[inq.id] || [];
               const coverageStatus = matches.length > 0 ? 'kb' : formFields.length > 0 ? 'form' : 'none';
+              // For social/greeting inquiries where no KB lookup is needed, treat as 'ok' to suppress the yellow warning
+              const needsKb = inq.needsKbSearch !== false;
 
               return (
                 <div
@@ -776,7 +779,7 @@ export function AssistantPanel({ ticket, onComposeReply, onNavigateToKB }: Assis
                           <Sparkles size={7} /> {formFields.length} {formFields.length === 1 ? 'field' : 'fields'}
                         </span>
                       )}
-                      {coverageStatus === 'none' && (
+                      {coverageStatus === 'none' && needsKb && (
                         <>
                           <span className="text-[8px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-0.5">
                             <AlertTriangle size={7} /> Gap
@@ -939,7 +942,7 @@ export function AssistantPanel({ ticket, onComposeReply, onNavigateToKB }: Assis
                       )}
 
                       {/* Not covered */}
-                      {coverageStatus === 'none' && (
+                      {coverageStatus === 'none' && needsKb && (
                         <div className="p-3 space-y-2">
                           <div className="flex items-start gap-2 p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
                             <AlertTriangle size={12} className="text-amber-500 shrink-0 mt-0.5" />

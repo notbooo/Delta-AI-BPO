@@ -31,7 +31,7 @@ function usePersistedState<T>(key: string, initial: T): [T, (v: T | ((prev: T) =
 }
 
 // --- Types ---
-type SettingsTab = 'agent' | 'ai' | 'notifications' | 'sla' | 'templates' | 'routing' | 'hours' | 'qa' | 'demo';
+type SettingsTab = 'agent' | 'notifications' | 'sla' | 'templates' | 'routing' | 'hours' | 'qa' | 'demo';
 
 interface SLAThreshold {
   priority: string;
@@ -424,25 +424,18 @@ export function SettingsView() {
               <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 ml-2">My Workspace</h3>
               <nav className="space-y-1">
                 {navItem('agent', <User size={16} />, 'My Preferences')}
-                {navItem('notifications', <Bell size={16} />, 'Notifications')}
-                {navItem('hours', <Clock size={16} />, 'Working Hours')}
-              </nav>
-            </div>
-
-            <div>
-              <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 ml-2">AI & Automation</h3>
-              <nav className="space-y-1">
-                {navItem('ai', <Sparkles size={16} />, 'AI Auto-Reply')}
+                {(hostSettings[0]?.demoFeatures?.showNotifications ?? true) && navItem('notifications', <Bell size={16} />, 'Notifications')}
+                {(hostSettings[0]?.demoFeatures?.showWorkingHours ?? true) && navItem('hours', <Clock size={16} />, 'Working Hours')}
               </nav>
             </div>
 
             <div>
               <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 ml-2">Administration</h3>
               <nav className="space-y-1">
-                {navItem('sla', <Timer size={16} />, 'Response Time Rules')}
-                {navItem('templates', <MessageSquareText size={16} />, 'Quick Reply Templates')}
-                {navItem('routing', <GitBranch size={16} />, 'Ticket Distribution')}
-                {navItem('qa', <Target size={16} />, 'Quality & Performance')}
+                {(hostSettings[0]?.demoFeatures?.showResponseTimeRules ?? true) && navItem('sla', <Timer size={16} />, 'Response Time Rules')}
+                {(hostSettings[0]?.demoFeatures?.showQuickReplyTemplates ?? true) && navItem('templates', <MessageSquareText size={16} />, 'Quick Reply Templates')}
+                {(hostSettings[0]?.demoFeatures?.showTicketDistribution ?? true) && navItem('routing', <GitBranch size={16} />, 'Ticket Distribution')}
+                {(hostSettings[0]?.demoFeatures?.showQualityPerformance ?? true) && navItem('qa', <Target size={16} />, 'Quality & Performance')}
                 {navItem('demo', <Sparkles size={16} />, 'Demo Features')}
               </nav>
             </div>
@@ -509,385 +502,11 @@ export function SettingsView() {
                   </select>
                 </FieldRow>
               </div>
-
-              {/* Reset to Demo */}
-              <h2 className="text-lg font-bold text-slate-800 mt-8 mb-6 flex items-center gap-2">
-                <RotateCcw size={18} className="text-red-500" /> Reset
-              </h2>
-              <div className="bg-white border border-red-200 rounded-xl shadow-sm">
-                <div className="p-5">
-                  <h3 className="font-bold text-slate-800 text-sm">Reset to Demo State</h3>
-                  <p className="text-xs text-slate-500 mt-1 mb-4">
-                    Restore all tickets, tasks, knowledge base entries, onboarding data, and preferences back to the original sample data. This does not affect your server-side API key.
-                  </p>
-                  <button
-                    onClick={() => {
-                      resetToDemo();
-                      navigate('/inbox');
-                      toast.success('Everything has been reset to the original demo state');
-                    }}
-                    className="px-4 py-2 bg-red-600 text-white font-medium rounded-lg text-sm hover:bg-red-700 shadow-sm transition-colors active:scale-95 flex items-center gap-2"
-                  >
-                    <RotateCcw size={14} /> Reset Everything
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ===== AI AUTO-REPLY (consolidated) ===== */}
-          {settingsTab === 'ai' && (
-            <div className="max-w-xl mx-auto animate-in fade-in">
-              <div className="flex items-center justify-between mb-1">
-                <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                  <Sparkles size={18} className="text-violet-500" /> AI Auto-Reply
-                </h2>
-              </div>
-              <p className="text-xs text-slate-500 mb-6">Configure your AI key, set per-client behavior, and choose how you're notified. Changes save automatically.</p>
-
-              {/* Section 1: Global AI Configuration */}
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 ml-1">AI Connection</h3>
-              <div className="bg-white border border-slate-200 rounded-xl shadow-sm mb-6">
-                <AIKeyFieldBackend
-                  hasApiKey={hasApiKey}
-                  maskedApiKey={maskedApiKey}
-                  loading={aiSettingsLoading}
-                  onSave={async (key) => {
-                    try {
-                      await saveAIApiKey(key);
-                      toast.success(key ? 'API key saved to server' : 'API key cleared');
-                    } catch (err: any) {
-                      toast.error('Failed to save API key', { description: err.message });
-                    }
-                  }}
-                  onClear={async () => {
-                    try {
-                      await clearAIApiKey();
-                      toast.success('API key cleared');
-                    } catch (err: any) {
-                      toast.error('Failed to clear API key', { description: err.message });
-                    }
-                  }}
-                />
-                <AIModelSelector
-                  currentModel={aiModel}
-                  onSave={async (model) => {
-                    try {
-                      await saveAIModel(model);
-                      toast.success(`AI model set to ${model}`);
-                    } catch (err: any) {
-                      toast.error('Failed to save model', { description: err.message });
-                    }
-                  }}
-                />
-
-                <ImportAIModelSelector
-                  currentModel={importAiModel}
-                  onSave={async (model) => {
-                    try {
-                      await saveImportAiModel(model);
-                      toast.success(`Import AI model set to ${model}`);
-                    } catch (err: any) {
-                      toast.error('Failed to save model', { description: err.message });
-                    }
-                  }}
-                />
-              </div>
-
-              {/* Section 2: Per-Host Config */}
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Client Configuration</h3>
-                <div className="flex items-center gap-2">
-                  <select value={selectedHostId} onChange={(e) => setSelectedHostId(e.target.value)} className="border border-slate-300 rounded-lg text-xs py-1.5 px-2.5 focus:ring-2 focus:ring-indigo-500 bg-white font-medium text-indigo-700">
-                    {MOCK_HOSTS.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div className="bg-white border border-slate-200 rounded-xl shadow-sm mb-6">
-                <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 rounded-t-xl flex items-center justify-between">
-                  <p className="text-xs text-slate-500">Settings for <strong className="text-indigo-700">{MOCK_HOSTS.find(h => h.id === selectedHostId)?.name}</strong> — changes auto-save.</p>
-                  {otherHosts.length > 0 && (
-                    <button
-                      onClick={() => { setShowBulkApply(!showBulkApply); setBulkTargetIds(new Set()); }}
-                      className="text-[11px] text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1 transition-colors"
-                    >
-                      <Globe size={11} /> Copy to others...
-                    </button>
-                  )}
-                </div>
-
-                {/* Bulk Apply Panel */}
-                {showBulkApply && (
-                  <div className="px-4 py-3 bg-indigo-50/60 border-b border-indigo-100 animate-in fade-in slide-in-from-top-1 duration-150">
-                    <p className="text-xs font-bold text-indigo-800 mb-2">
-                      Copy current settings to other clients
-                    </p>
-                    <p className="text-[11px] text-indigo-600 mb-3">
-                      This will overwrite all AI settings (tone, mode, coverage, timing, keywords) for the selected clients.
-                    </p>
-                    <div className="space-y-1.5 mb-3">
-                      {otherHosts.map(h => (
-                        <label key={h.id} className="flex items-center gap-2 cursor-pointer group">
-                          <input
-                            type="checkbox"
-                            checked={bulkTargetIds.has(h.id)}
-                            onChange={() => toggleBulkTarget(h.id)}
-                            className="rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
-                          />
-                          <span className="text-xs text-slate-700 group-hover:text-indigo-700 transition-colors">{h.name}</span>
-                        </label>
-                      ))}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={handleBulkApply}
-                        className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition-colors"
-                      >
-                        {bulkTargetIds.size === 0 ? `Apply to All (${otherHosts.length})` : `Apply to ${bulkTargetIds.size} Selected`}
-                      </button>
-                      <button
-                        onClick={() => setShowBulkApply(false)}
-                        className="px-3 py-1.5 text-slate-600 hover:text-slate-800 text-xs font-medium transition-colors"
-                      >
-                        Cancel
-                      </button>
-                      {bulkTargetIds.size > 0 && bulkTargetIds.size < otherHosts.length && (
-                        <button
-                          onClick={() => setBulkTargetIds(new Set(otherHosts.map(h => h.id)))}
-                          className="text-[11px] text-indigo-500 hover:text-indigo-700 underline ml-auto"
-                        >
-                          Select all
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Brand voice */}
-                <FieldRow label="Brand Voice" description="Tell the AI how this client likes their guests to be addressed.">
-                  <input
-                    type="text"
-                    value={tone}
-                    onChange={(e) => setTone(e.target.value)}
-                    onBlur={() => setToneAndSave(tone)}
-                    placeholder="e.g., Warm and professional"
-                    className="w-full border border-slate-300 rounded-lg text-sm py-2 px-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-300 outline-none"
-                  />
-                </FieldRow>
-
-                {/* Auto-reply toggle */}
-                <ToggleRow
-                  label={<span className="flex items-center gap-2">Enable Auto-Reply <Bot size={14} className="text-violet-500" /></span>}
-                  description="AI automatically responds to guest messages using the knowledge base. Replies appear as violet 'AI Auto-Reply' bubbles."
-                  checked={autoReply}
-                  onChange={setAutoReplyAndSave}
-                />
-
-                {autoReply && (
-                  <>
-                    {/* Response Mode — always visible */}
-                    <div className="px-5 py-4 border-t border-slate-100">
-                      <label className="block text-sm font-bold text-slate-800 mb-1">Response Mode</label>
-                      <p className="text-xs text-slate-500 mb-3">How the AI delivers its responses.</p>
-                      <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-3'} gap-2`}>
-                        {([
-                          { value: 'auto' as const, label: 'Auto-Send', desc: 'Sends directly to guests' },
-                          { value: 'draft' as const, label: 'Draft', desc: 'Holds for your approval' },
-                          { value: 'assist' as const, label: 'Assist Only', desc: 'Sidebar panels only' },
-                        ]).map(opt => (
-                          <RadioCard
-                            key={opt.value}
-                            selected={autoReplyMode === opt.value}
-                            onClick={() => setAutoReplyModeAndSave(opt.value)}
-                            label={opt.label}
-                            description={opt.desc}
-                            compact
-                          />
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Guest Inquiry Routing — always visible, no accordion */}
-                    <div className="px-5 py-4 border-t border-slate-100 space-y-4">
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Guest Inquiry Routing</label>
-                        <p className="text-[10px] text-slate-400 mb-3">How AI handles guest questions based on knowledge base coverage.</p>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1.5">When AI only has partial answers</label>
-                        <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-2'} gap-2`}>
-                          <RadioCard
-                            selected={partialCoverage === 'answer-and-escalate'}
-                            onClick={() => setPartialCoverageAndSave('answer-and-escalate')}
-                            label="Answer & Hand Off"
-                            description="Reply with what's in the knowledge base, hand off the rest to your team"
-                            compact
-                          />
-                          <RadioCard
-                            selected={partialCoverage === 'escalate-all'}
-                            onClick={() => setPartialCoverageAndSave('escalate-all')}
-                            label="Hand Off Everything"
-                            description="Route entire conversation to your team"
-                            compact
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1.5">When AI can't answer at all</label>
-                        <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-2'} gap-2`}>
-                          <RadioCard
-                            selected={zeroCoverage === 'holding-message'}
-                            onClick={() => setZeroCoverageAndSave('holding-message')}
-                            label="Send Holding Message"
-                            description="Acknowledge the guest, let them know someone's on it"
-                            compact
-                          />
-                          <RadioCard
-                            selected={zeroCoverage === 'silent-escalate'}
-                            onClick={() => setZeroCoverageAndSave('silent-escalate')}
-                            label="Silent Hand-Off"
-                            description="Route to your team without messaging the guest"
-                            compact
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Timing & Cooldown — always visible, no accordion */}
-                    <div className="px-5 py-4 border-t border-slate-100 space-y-4">
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                          <Clock size={12} className="text-slate-500" /> Response Speed
-                        </label>
-                        <div className={`grid ${isMobile ? 'grid-cols-2' : 'grid-cols-4'} gap-2`}>
-                          {([
-                            { value: 'instant' as const, label: 'Instant', time: '2s', desc: 'No wait' },
-                            { value: 'quick' as const, label: 'Quick', time: '10s', desc: 'SMS / chat' },
-                            { value: 'normal' as const, label: 'Normal', time: '30s', desc: 'Default' },
-                            { value: 'patient' as const, label: 'Patient', time: '60s', desc: 'Email-style' },
-                          ]).map(opt => (
-                            <RadioCard
-                              key={opt.value}
-                              selected={debouncePreset === opt.value}
-                              onClick={() => setDebouncePresetAndSave(opt.value)}
-                              label={`${opt.label} (${opt.time})`}
-                              description={opt.desc}
-                              compact
-                            />
-                          ))}
-                        </div>
-                        {debouncePreset === 'instant' && (
-                          <p className="text-[10px] text-amber-600 mt-1.5 flex items-center gap-1">
-                            <Zap size={10} /> Instant mode fires within 2s. Great for demos, but may reply before the guest finishes typing.
-                          </p>
-                        )}
-                      </div>
-
-                      <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                            <Pause size={12} className="text-slate-500" /> Pause AI after agent reply
-                          </label>
-                          <Toggle checked={cooldownEnabled} onChange={setCooldownEnabledAndSave} />
-                        </div>
-                        <p className="text-[11px] text-slate-500 mb-2">
-                          Prevent the AI from jumping back in after you reply manually.
-                        </p>
-                        {cooldownEnabled && (
-                          <div className="flex items-center gap-2 ml-0.5">
-                            <span className="text-xs text-slate-600">Resume after</span>
-                            <input
-                              type="number"
-                              value={cooldownMinutes}
-                              onChange={(e) => setCooldownMinutesAndSave(Math.max(1, Math.min(120, Number(e.target.value))))}
-                              min={1} max={120}
-                              className="border border-slate-300 rounded-md text-xs py-1 px-2 w-16 text-center focus:ring-1 focus:ring-indigo-500 outline-none"
-                            />
-                            <span className="text-xs text-slate-500">minutes</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Safety Keywords — collapsible, with summary in header */}
-                    <div className="border-t border-slate-100">
-                      <button
-                        onClick={() => setShowSafety(!showSafety)}
-                        className="w-full px-5 py-3.5 flex items-center gap-3 text-left hover:bg-slate-50/50 transition-colors"
-                      >
-                        <ShieldAlert size={15} className="text-red-500 shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <span className="text-sm font-bold text-slate-800">Safety Escalation Keywords</span>
-                          <p className="text-xs text-slate-500 mt-0.5">
-                            {safetyKeywords.length} keyword{safetyKeywords.length !== 1 ? 's' : ''} — messages with these always go to a human
-                          </p>
-                        </div>
-                        {showSafety ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
-                      </button>
-                      {showSafety && (
-                        <div className="px-5 pb-4 animate-in fade-in duration-150">
-                          <div className="flex flex-wrap gap-1.5 mb-3">
-                            {safetyKeywords.map(kw => (
-                              <span key={kw} className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-50 text-red-700 rounded-md text-xs font-medium border border-red-200">
-                                {kw}
-                                <button onClick={() => removeSafetyKeyword(kw)} className="text-red-400 hover:text-red-600 p-0.5 -mr-1">
-                                  <X size={11} />
-                                </button>
-                              </span>
-                            ))}
-                            {safetyKeywords.length === 0 && (
-                              <span className="text-xs text-slate-400 italic">No keywords set — the AI will handle all topics.</span>
-                            )}
-                          </div>
-                          <div className="flex gap-2">
-                            <input
-                              type="text"
-                              value={newKeyword}
-                              onChange={(e) => setNewKeyword(e.target.value)}
-                              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSafetyKeyword(); } }}
-                              placeholder="Type a keyword and press Enter..."
-                              className="flex-1 border border-slate-300 rounded-lg text-xs py-2 px-3 focus:ring-2 focus:ring-red-500 focus:border-red-300 outline-none"
-                            />
-                            <button onClick={addSafetyKeyword} className="px-3 py-2 bg-red-600 text-white rounded-lg text-xs font-medium hover:bg-red-700 transition-colors shrink-0">
-                              Add
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Section 3: AI Notification Preferences */}
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 ml-1">AI Notifications</h3>
-              <div className="bg-white border border-slate-200 rounded-xl shadow-sm mb-6">
-                <ToggleRow
-                  label={<span className="flex items-center gap-2"><Bot size={14} className="text-violet-500" /> AI Sent a Reply</span>}
-                  description="Show a notification when the AI successfully auto-replies to a guest."
-                  checked={notificationPrefs.notifyAutoReply}
-                  onChange={(v) => updateNotificationPrefs({ notifyAutoReply: v })}
-                />
-                <ToggleRow
-                  label={<span className="flex items-center gap-2"><ShieldAlert size={14} className="text-amber-500" /> AI Needs Your Help</span>}
-                  description="Notify you when the AI escalated a conversation to your queue."
-                  checked={notificationPrefs.notifyEscalation}
-                  onChange={(v) => updateNotificationPrefs({ notifyEscalation: v })}
-                />
-                <ToggleRow
-                  label={<span className="flex items-center gap-2"><Pencil size={14} className="text-blue-500" /> AI Draft Ready</span>}
-                  description="Notify you when the AI prepared a draft that needs your approval."
-                  checked={notificationPrefs.notifyDraft}
-                  onChange={(v) => updateNotificationPrefs({ notifyDraft: v })}
-                  last
-                />
-              </div>
             </div>
           )}
 
           {/* ===== NOTIFICATIONS ===== */}
-          {settingsTab === 'notifications' && (
+          {(hostSettings[0]?.demoFeatures?.showNotifications ?? true) && settingsTab === 'notifications' && (
             <div className="max-w-xl mx-auto animate-in fade-in">
               <h2 className="text-lg font-bold text-slate-800 mb-1">Notifications</h2>
               <p className="text-xs text-slate-500 mb-6">Control how and when you receive alerts. Changes save automatically.</p>
@@ -922,7 +541,7 @@ export function SettingsView() {
           )}
 
           {/* ===== RESPONSE TIME RULES ===== */}
-          {settingsTab === 'sla' && (
+          {(hostSettings[0]?.demoFeatures?.showResponseTimeRules ?? true) && settingsTab === 'sla' && (
             <div className="max-w-2xl mx-auto animate-in fade-in">
               <div className="mb-6">
                 <h2 className="text-lg font-bold text-slate-800">Response Time Rules</h2>
@@ -988,7 +607,7 @@ export function SettingsView() {
           )}
 
           {/* ===== QUICK REPLY TEMPLATES ===== */}
-          {settingsTab === 'templates' && (
+          {(hostSettings[0]?.demoFeatures?.showQuickReplyTemplates ?? true) && settingsTab === 'templates' && (
             <div className="max-w-2xl mx-auto animate-in fade-in">
               <div className="flex items-center justify-between mb-6">
                 <div>
@@ -1073,7 +692,7 @@ export function SettingsView() {
           )}
 
           {/* ===== TICKET DISTRIBUTION ===== */}
-          {settingsTab === 'routing' && (
+          {(hostSettings[0]?.demoFeatures?.showTicketDistribution ?? true) && settingsTab === 'routing' && (
             <div className="max-w-xl mx-auto animate-in fade-in">
               <h2 className="text-lg font-bold text-slate-800 mb-1">Ticket Distribution</h2>
               <p className="text-xs text-slate-500 mb-6">Choose how incoming guest conversations are assigned to your team members.</p>
@@ -1148,7 +767,7 @@ export function SettingsView() {
           )}
 
           {/* ===== WORKING HOURS ===== */}
-          {settingsTab === 'hours' && (
+          {(hostSettings[0]?.demoFeatures?.showWorkingHours ?? true) && settingsTab === 'hours' && (
             <div className="max-w-xl mx-auto animate-in fade-in">
               <h2 className="text-lg font-bold text-slate-800 mb-1">Working Hours</h2>
               <p className="text-xs text-slate-500 mb-6">Set your availability schedule and control what happens when you're offline.</p>
@@ -1262,7 +881,7 @@ export function SettingsView() {
           )}
 
           {/* ===== QUALITY & PERFORMANCE ===== */}
-          {settingsTab === 'qa' && (
+          {(hostSettings[0]?.demoFeatures?.showQualityPerformance ?? true) && settingsTab === 'qa' && (
             <div className="max-w-xl mx-auto animate-in fade-in">
               <h2 className="text-lg font-bold text-slate-800 mb-1">Quality & Performance</h2>
               <p className="text-xs text-slate-500 mb-6">Define the quality standards and targets for your team's guest interactions.</p>
@@ -1380,6 +999,148 @@ export function SettingsView() {
                     }
                   })}
                   last
+                />
+              </div>
+
+              {/* Settings Visibility */}
+              <div className="bg-white border border-slate-200 rounded-xl shadow-sm mb-4">
+                <div className="p-4 bg-slate-50 border-b border-slate-200">
+                  <h3 className="font-bold text-sm text-slate-700">Settings Visibility</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Control which settings tabs appear in the settings panel.</p>
+                </div>
+                <ToggleRow
+                  label="Show Notifications"
+                  description="Display the Notifications settings tab."
+                  checked={hostSettings[0]?.demoFeatures?.showNotifications ?? true}
+                  onChange={(checked) => updateHostSettings(hostSettings[0]?.hostId || '', {
+                    ...hostSettings[0],
+                    demoFeatures: {
+                      ...hostSettings[0]?.demoFeatures,
+                      showNotifications: checked
+                    }
+                  })}
+                />
+                <ToggleRow
+                  label="Show Working Hours"
+                  description="Display the Working Hours settings tab."
+                  checked={hostSettings[0]?.demoFeatures?.showWorkingHours ?? true}
+                  onChange={(checked) => updateHostSettings(hostSettings[0]?.hostId || '', {
+                    ...hostSettings[0],
+                    demoFeatures: {
+                      ...hostSettings[0]?.demoFeatures,
+                      showWorkingHours: checked
+                    }
+                  })}
+                />
+                <ToggleRow
+                  label="Show Response Time Rules"
+                  description="Display the Response Time Rules (SLA) settings tab."
+                  checked={hostSettings[0]?.demoFeatures?.showResponseTimeRules ?? true}
+                  onChange={(checked) => updateHostSettings(hostSettings[0]?.hostId || '', {
+                    ...hostSettings[0],
+                    demoFeatures: {
+                      ...hostSettings[0]?.demoFeatures,
+                      showResponseTimeRules: checked
+                    }
+                  })}
+                />
+                <ToggleRow
+                  label="Show Quick Reply Templates"
+                  description="Display the Quick Reply Templates settings tab."
+                  checked={hostSettings[0]?.demoFeatures?.showQuickReplyTemplates ?? true}
+                  onChange={(checked) => updateHostSettings(hostSettings[0]?.hostId || '', {
+                    ...hostSettings[0],
+                    demoFeatures: {
+                      ...hostSettings[0]?.demoFeatures,
+                      showQuickReplyTemplates: checked
+                    }
+                  })}
+                />
+                <ToggleRow
+                  label="Show Ticket Distribution"
+                  description="Display the Ticket Distribution settings tab."
+                  checked={hostSettings[0]?.demoFeatures?.showTicketDistribution ?? true}
+                  onChange={(checked) => updateHostSettings(hostSettings[0]?.hostId || '', {
+                    ...hostSettings[0],
+                    demoFeatures: {
+                      ...hostSettings[0]?.demoFeatures,
+                      showTicketDistribution: checked
+                    }
+                  })}
+                />
+                <ToggleRow
+                  label="Show Quality & Performance"
+                  description="Display the Quality & Performance settings tab."
+                  checked={hostSettings[0]?.demoFeatures?.showQualityPerformance ?? true}
+                  onChange={(checked) => updateHostSettings(hostSettings[0]?.hostId || '', {
+                    ...hostSettings[0],
+                    demoFeatures: {
+                      ...hostSettings[0]?.demoFeatures,
+                      showQualityPerformance: checked
+                    }
+                  })}
+                />
+                <ToggleRow
+                  label="Show Zoom Control"
+                  description="Display the zoom control in the top bar. Disable to use browser native zooming."
+                  checked={hostSettings[0]?.demoFeatures?.showZoomOverride ?? true}
+                  onChange={(checked) => updateHostSettings(hostSettings[0]?.hostId || '', {
+                    ...hostSettings[0],
+                    demoFeatures: {
+                      ...hostSettings[0]?.demoFeatures,
+                      showZoomOverride: checked
+                    }
+                  })}
+                  last
+                />
+              </div>
+
+              {/* AI Connection */}
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 ml-1">AI Configuration</h3>
+              <div className="bg-white border border-slate-200 rounded-xl shadow-sm mb-6">
+                <AIKeyFieldBackend
+                  hasApiKey={hasApiKey}
+                  maskedApiKey={maskedApiKey}
+                  loading={aiSettingsLoading}
+                  onSave={async (key) => {
+                    try {
+                      await saveAIApiKey(key);
+                      toast.success(key ? 'API key saved to server' : 'API key cleared');
+                    } catch (err: any) {
+                      toast.error('Failed to save API key', { description: err.message });
+                    }
+                  }}
+                  onClear={async () => {
+                    try {
+                      await clearAIApiKey();
+                      toast.success('API key cleared');
+                    } catch (err: any) {
+                      toast.error('Failed to clear API key', { description: err.message });
+                    }
+                  }}
+                />
+                <AIModelSelector
+                  currentModel={aiModel}
+                  onSave={async (model) => {
+                    try {
+                      await saveAIModel(model);
+                      toast.success(`AI model set to ${model}`);
+                    } catch (err: any) {
+                      toast.error('Failed to save model', { description: err.message });
+                    }
+                  }}
+                />
+
+                <ImportAIModelSelector
+                  currentModel={importAiModel}
+                  onSave={async (model) => {
+                    try {
+                      await saveImportAiModel(model);
+                      toast.success(`Import AI model set to ${model}`);
+                    } catch (err: any) {
+                      toast.error('Failed to save model', { description: err.message });
+                    }
+                  }}
                 />
               </div>
 

@@ -22,6 +22,8 @@ export interface DetectedInquiry {
   keywords: string[];
   /** Whether this was classified by the LLM */
   aiClassified?: boolean;
+  /** Whether a KB/form lookup is actually needed (false for greetings, social messages, etc.) */
+  needsKbSearch?: boolean;
 }
 
 export type InquiryType =
@@ -447,6 +449,7 @@ export async function classifyWithLLM(
       confidence?: string;
       relevantTags?: string[];
       keywords?: string[];
+      needsKbSearch?: boolean;
     }>;
 
     if (!Array.isArray(parsed) || parsed.length === 0) {
@@ -475,6 +478,7 @@ export async function classifyWithLLM(
         relevantTags: item.relevantTags || [],
         keywords: finalKeywords,
         aiClassified: true,
+        needsKbSearch: item.needsKbSearch !== false, // default true; only false if AI explicitly says so
       };
     });
 

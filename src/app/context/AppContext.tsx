@@ -50,8 +50,15 @@ export interface HostSettings {
     displayHours: string; // Human-readable, e.g. "9am–9pm daily"
   };
   demoFeatures: {
-    showTasks: boolean;      // Show Tasks in sidebar
-    showAnalytics: boolean;  // Show Analytics in sidebar
+    showTasks: boolean;               // Show Tasks in sidebar
+    showAnalytics: boolean;           // Show Analytics in sidebar
+    showNotifications: boolean;       // Show Notifications settings tab
+    showWorkingHours: boolean;        // Show Working Hours settings tab
+    showResponseTimeRules: boolean;   // Show Response Time Rules (SLA) settings tab
+    showQuickReplyTemplates: boolean; // Show Quick Reply Templates settings tab
+    showTicketDistribution: boolean;  // Show Ticket Distribution settings tab
+    showQualityPerformance: boolean;  // Show Quality & Performance settings tab
+    showZoomOverride: boolean;        // Show zoom control in TopBar
   };
 }
 
@@ -232,7 +239,17 @@ function makeDefaultHostSettings(h: Host): HostSettings {
     debouncePreset: 'instant',
     safetyKeywords: [...DEFAULT_SAFETY_KEYWORDS],
     activeHours: { enabled: false, startHour: 9, endHour: 21, displayHours: '9am–9pm daily' },
-    demoFeatures: { showTasks: true, showAnalytics: true },
+    demoFeatures: {
+      showTasks: true,
+      showAnalytics: true,
+      showNotifications: true,
+      showWorkingHours: true,
+      showResponseTimeRules: true,
+      showQuickReplyTemplates: true,
+      showTicketDistribution: true,
+      showQualityPerformance: true,
+      showZoomOverride: true,
+    },
   };
 }
 

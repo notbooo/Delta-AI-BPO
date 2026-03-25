@@ -105,6 +105,7 @@ function AppInner({
       )}
 
       <KeyboardShortcuts open={showShortcuts} onClose={() => setShowShortcuts(false)} />
+      {appContext.devMode && <AIDebugPanel />}
     </div>
   );
 }
@@ -223,7 +224,6 @@ export function AppLayout() {
         isMobile={isMobile}
         isActive={isActive}
       />
-      <AIDebugPanel />
       <Toaster position={isMobile ? 'top-center' : 'bottom-right'} richColors closeButton />
     </AppProvider>
   );

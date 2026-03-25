@@ -128,6 +128,7 @@ Each object has:
 - "confidence": "high" if the intent is very clear, "medium" if somewhat ambiguous, "low" if you're guessing
 - "relevantTags": array of 1-4 KB tags most likely to match (e.g. ["Pets", "Policies", "House Rules"])
 - "keywords": array of 3-6 SPECIFIC search keywords to find relevant KB entries. Use nouns and domain-specific terms ONLY — never include generic words like "policy", "rules", "check", "guest", "booking", "property", "request", "question", "information" (e.g. for a pet inquiry use ["pet", "dog", "allowed", "animal", "fee"] NOT ["pet", "policy", "rules"])
+- "needsKbSearch": true if this inquiry genuinely requires looking up property info to answer (most inquiries). false ONLY for pure social messages (greetings, thank-yous, compliments) where no property info is needed. When in doubt, use true.
 
 Rules:
 - Return 1-3 inquiries max — guests rarely ask about more than 3 things at once
