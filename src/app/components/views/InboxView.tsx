@@ -589,20 +589,6 @@ export function InboxView() {
               <span className="bg-slate-200 text-slate-600 text-xs px-2 py-1 rounded-full">{filteredTickets.length}</span>
             </div>
           </h2>
-          {pausedOrHandedOffCount > 0 && (
-            <button
-              onClick={() => {
-                resumeAllAI();
-                toast.success(`AI re-enabled for ${pausedOrHandedOffCount} thread${pausedOrHandedOffCount > 1 ? 's' : ''}`, { duration: 3000 });
-              }}
-              className="mt-2 w-full flex items-center justify-center gap-1.5 text-[10px] font-bold px-2 py-1.5 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300 transition-colors uppercase tracking-wider relative"
-            >
-              <Zap size={11} /> Re-enable all AI
-              <span className="inline-flex items-center justify-center min-w-[16px] h-4 px-1 text-[9px] font-bold rounded-full bg-amber-500 text-white shadow-sm">
-                {pausedOrHandedOffCount}
-              </span>
-            </button>
-          )}
         </div>
 
         {showNewThread && (
