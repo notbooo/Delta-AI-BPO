@@ -184,12 +184,26 @@ export function TestGuideView() {
 
   // Build portal links for quick copy
   const portalLinks = useMemo(() => {
-    return properties
-      .filter(p => p.portalToken && p.status === 'Active')
-      .map(p => ({
-        name: p.name,
-        url: `${window.location.origin}/host/${p.id}/${p.portalToken}`,
-      }));
+    const links: { name: string; url: string; type: 'external' | 'internal' }[] = [];
+    for (const p of properties) {
+      if (p.status === 'Active') {
+        if (p.portalToken) {
+          links.push({
+            name: p.name,
+            url: `${window.location.origin}/host/${p.id}/${p.portalToken}`,
+            type: 'external',
+          });
+        }
+        if (p.internalPortalToken) {
+          links.push({
+            name: `${p.name} (Internal)`,
+            url: `${window.location.origin}/host/${p.id}/${p.internalPortalToken}`,
+            type: 'internal',
+          });
+        }
+      }
+    }
+    return links;
   }, [properties]);
 
   const copyText = (text: string, label: string) => {
@@ -270,11 +284,18 @@ export function TestGuideView() {
             {/* Portal links */}
             {portalLinks.length > 0 && (
               <div className="mt-3 pt-3 border-t border-slate-100">
-                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Host Portal Links (shareable)</h4>
+                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Portal Links</h4>
                 <div className="space-y-1.5">
                   {portalLinks.map(link => (
                     <div key={link.name} className="flex items-center gap-2 text-xs">
-                      <span className="font-medium text-slate-600 shrink-0">{link.name}:</span>
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold shrink-0 ${
+                        link.type === 'internal'
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-indigo-100 text-indigo-700'
+                      }`}>
+                        {link.type === 'internal' ? 'INTERNAL' : 'SHARED'}
+                      </span>
+                      <span className="font-medium text-slate-600 shrink-0 truncate">{link.name}:</span>
                       <code className="flex-1 text-[10px] bg-slate-50 px-2 py-1 rounded truncate text-slate-500 font-mono">{link.url}</code>
                       <button onClick={() => copyText(link.url, `${link.name} link`)} className="text-slate-400 hover:text-indigo-600 shrink-0">
                         <Copy size={12} />

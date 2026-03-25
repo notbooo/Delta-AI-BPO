@@ -398,21 +398,25 @@ Output ONLY a JSON object. For regular fields use flat keys. For FAQs use a "faq
     setShowGoLiveConfirm(true);
   };
 
-  // Portal link
+  // Portal links
   const portalUrl = prop?.portalToken
     ? `${window.location.origin}/host/${propertyId}/${prop.portalToken}`
     : null;
 
-  const copyPortalLink = () => {
-    if (portalUrl) {
+  const internalPortalUrl = prop?.internalPortalToken
+    ? `${window.location.origin}/host/${propertyId}/${prop.internalPortalToken}`
+    : null;
+
+  const copyPortalLink = (url: string | null, isInternal = false) => {
+    if (url) {
       // Try modern Clipboard API first
       if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(portalUrl)
-          .then(() => toast.success('Portal link copied to clipboard'))
-          .catch(() => fallbackCopy(portalUrl));
+        navigator.clipboard.writeText(url)
+          .then(() => toast.success(`${isInternal ? 'Internal' : 'Host'} portal link copied`))
+          .catch(() => fallbackCopy(url));
       } else {
         // Fallback for non-secure contexts or unsupported browsers
-        fallbackCopy(portalUrl);
+        fallbackCopy(url);
       }
     }
   };
@@ -444,6 +448,7 @@ Output ONLY a JSON object. For regular fields use flat keys. For FAQs use a "faq
     updatePropertyStatus(propertyId, 'Active');
     updatePropertyMeta(propertyId, {
       portalToken: prop.portalToken || `${prop.name.toLowerCase().replace(/\s+/g, '-')}-${Math.random().toString(36).substring(2, 8)}`,
+      internalPortalToken: prop.internalPortalToken || `internal-${Math.random().toString(36).substring(2, 12)}-${Math.random().toString(36).substring(2, 8)}`,
     });
 
     toast.success(`${prop.name} is now live!`, {
@@ -1645,19 +1650,36 @@ Output ONLY a JSON object. For regular fields use flat keys. For FAQs use a "faq
               <button onClick={() => setShowPortalLink(false)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
             </div>
 
-            <div className="mb-4">
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Shareable Link</label>
-              <div className="flex gap-2">
-                <div className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-xs text-slate-600 truncate font-mono">
-                  {portalUrl || 'Go live first to generate a portal link'}
+            <div className="mb-4 space-y-3">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Host Shareable Link</label>
+                <div className="flex gap-2">
+                  <div className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-xs text-slate-600 truncate font-mono">
+                    {portalUrl || 'Go live first to generate a portal link'}
+                  </div>
+                  <button
+                    onClick={() => copyPortalLink(portalUrl, false)}
+                    disabled={!portalUrl}
+                    className="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 transition-colors flex items-center gap-1.5 text-xs font-medium shrink-0"
+                  >
+                    <Copy size={12} /> Copy
+                  </button>
                 </div>
-                <button
-                  onClick={copyPortalLink}
-                  disabled={!portalUrl}
-                  className="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 transition-colors flex items-center gap-1.5 text-xs font-medium"
-                >
-                  <Copy size={12} /> Copy
-                </button>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Internal Access Link</label>
+                <div className="flex gap-2">
+                  <div className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-xs text-slate-600 truncate font-mono">
+                    {internalPortalUrl || 'Go live first to generate an internal link'}
+                  </div>
+                  <button
+                    onClick={() => copyPortalLink(internalPortalUrl, true)}
+                    disabled={!internalPortalUrl}
+                    className="px-3 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:bg-slate-200 disabled:text-slate-400 transition-colors flex items-center gap-1.5 text-xs font-medium shrink-0"
+                  >
+                    <Copy size={12} /> Copy
+                  </button>
+                </div>
               </div>
             </div>
 

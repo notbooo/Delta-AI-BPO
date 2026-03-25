@@ -38,7 +38,8 @@ export function HostPortalView() {
   const prop = properties.find(p => p.id === propertyId);
   const host = prop ? MOCK_HOSTS.find(h => h.id === prop.hostId) : null;
   const isActive = prop?.status === 'Active';
-  const isValidToken = prop?.portalToken === token;
+  const isValidToken = prop?.portalToken === token || prop?.internalPortalToken === token;
+  const isInternalAccess = prop?.internalPortalToken === token;
 
   // Filter out sections marked as internal-only
   const visibleSections = useMemo(() =>

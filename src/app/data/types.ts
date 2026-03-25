@@ -16,7 +16,8 @@ export interface Property {
   roomNames?: string[];
   status: 'Active' | 'Onboarding';
   lastSyncedAt?: string; // ISO timestamp of last KB sync
-  portalToken?: string;  // shareable token for host portal
+  portalToken?: string;  // shareable token for host portal (external/public)
+  internalPortalToken?: string;  // internal-only token (staff use)
 }
 
 export interface Message {
