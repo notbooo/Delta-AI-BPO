@@ -24,6 +24,8 @@ export interface DetectedInquiry {
   aiClassified?: boolean;
   /** Whether a KB/form lookup is actually needed (false for greetings, social messages, etc.) */
   needsKbSearch?: boolean;
+  /** AI-generated plain-text briefing for the agent (used in ai-context mode) */
+  context?: string;
 }
 
 export type InquiryType =
@@ -450,6 +452,7 @@ export async function classifyWithLLM(
       relevantTags?: string[];
       keywords?: string[];
       needsKbSearch?: boolean;
+      context?: string;
     }>;
 
     if (!Array.isArray(parsed) || parsed.length === 0) {
@@ -478,7 +481,8 @@ export async function classifyWithLLM(
         relevantTags: item.relevantTags || [],
         keywords: finalKeywords,
         aiClassified: true,
-        needsKbSearch: item.needsKbSearch !== false, // default true; only false if AI explicitly says so
+        needsKbSearch: item.needsKbSearch !== false,
+        context: item.context || '',
       };
     });
 

@@ -1120,9 +1120,11 @@ export function InboxView() {
 
                   if (isSafety) {
                     return (
-                      <div className="bg-red-50 border border-red-200 text-red-800 text-xs px-3 py-2 rounded-lg flex items-center gap-2 shadow-sm min-w-0">
-                        <ShieldAlert size={13} className="text-red-500 shrink-0" />
-                        <span className="font-medium min-w-0 break-words">{msg.text}</span>
+                      <div className="flex items-center justify-center gap-2 py-1">
+                        <div className="flex items-center gap-1.5 bg-red-100 text-red-600 text-[10px] font-semibold px-2.5 py-1 rounded-full border border-red-200">
+                          <ShieldAlert size={11} className="shrink-0" />
+                          <span>{msg.text}</span>
+                        </div>
                       </div>
                     );
                   }
@@ -1134,7 +1136,18 @@ export function InboxView() {
                       </div>
                     );
                   }
-                  if (isPartial)      return divider('bg-sky-200',    'text-sky-500',    AlertCircle, msg.text);
+                  if (isPartial) {
+                    // Trim long topic lists: "Follow-up needed — A, B, C" → "Follow-up needed — A +2"
+                    const partialText = (() => {
+                      const dashIdx = msg.text.indexOf('—');
+                      if (dashIdx === -1) return msg.text;
+                      const prefix = msg.text.slice(0, dashIdx + 1).trim();
+                      const topics = msg.text.slice(dashIdx + 1).trim().split(',').map(s => s.trim()).filter(Boolean);
+                      if (topics.length <= 1) return msg.text;
+                      return `${prefix} ${topics[0]}${topics.length > 1 ? ` +${topics.length - 1}` : ''}`;
+                    })();
+                    return divider('bg-sky-200', 'text-sky-500', AlertCircle, partialText);
+                  }
                   if (isReEscalation) return divider('bg-orange-200', 'text-orange-500', Clock,       msg.text);
                   if (isAINote)       return divider('bg-slate-200',  'text-slate-400 italic', Bot,   msg.text);
                   // Default

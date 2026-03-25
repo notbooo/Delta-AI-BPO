@@ -33,20 +33,7 @@ import {
 } from '../../ai/prompts';
 
 // Inquiry type → icon + color mapping
-const INQUIRY_STYLE: Record<string, { icon: ReactNode; color: string; bg: string; border: string }> = {
-  maintenance: { icon: <AlertTriangle size={12} />, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200' },
-  wifi: { icon: <Zap size={12} />, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' },
-  checkout: { icon: <ChevronRight size={12} />, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200' },
-  checkin: { icon: <ChevronRight size={12} />, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200' },
-  noise: { icon: <Shield size={12} />, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' },
-  luggage: { icon: <BookOpen size={12} />, color: 'text-slate-600', bg: 'bg-slate-50', border: 'border-slate-200' },
-  directions: { icon: <ArrowRight size={12} />, color: 'text-teal-600', bg: 'bg-teal-50', border: 'border-teal-200' },
-  billing: { icon: <BookOpen size={12} />, color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200' },
-  amenities: { icon: <Sparkles size={12} />, color: 'text-cyan-600', bg: 'bg-cyan-50', border: 'border-cyan-200' },
-  pet: { icon: <PawPrint size={12} />, color: 'text-pink-600', bg: 'bg-pink-50', border: 'border-pink-200' },
-  houserules: { icon: <Shield size={12} />, color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200' },
-  general: { icon: <MessageSquare size={12} />, color: 'text-slate-600', bg: 'bg-slate-50', border: 'border-slate-200' },
-};
+const INQUIRY_STYLE = { icon: <MessageSquare size={12} />, color: 'text-slate-600', bg: 'bg-slate-50', border: 'border-slate-200' };
 
 
 interface AssistantPanelProps {
@@ -201,9 +188,10 @@ interface ChatMessage {
 const MAX_CONTEXT_TURNS = 3; // 3 user+assistant pairs = 6 messages
 
 export function AssistantPanel({ ticket, onComposeReply, onNavigateToKB }: AssistantPanelProps) {
-  const { kbEntries, hasApiKey: hasApiKeyFromCtx, aiModel, onboardingData, formTemplate, properties } = useAppContext();
+  const { kbEntries, hasApiKey: hasApiKeyFromCtx, aiModel, onboardingData, formTemplate, properties, hostSettings } = useAppContext();
+  const guestNeedsMode = hostSettings?.[0]?.demoFeatures?.guestNeedsMode ?? 'ai-context';
   const [isAnalyzing, setIsAnalyzing] = useState(true);
-  const [expandedInquiry, setExpandedInquiry] = useState<string | null>(null);
+  const [expandedInquiries, setExpandedInquiries] = useState<Set<string>>(new Set());
   const [expandedArticle, setExpandedArticle] = useState<string | null>(null);
 
   // Chat state
@@ -376,7 +364,7 @@ export function AssistantPanel({ ticket, onComposeReply, onNavigateToKB }: Assis
   // isAnalyzing is set to false by the classification effect when LLM returns
   useEffect(() => {
     setIsAnalyzing(true);
-    setExpandedInquiry(null);
+    setExpandedInquiries(new Set());
     setExpandedArticle(null);
     setInputText('');
     setIsThinking(false);
@@ -396,10 +384,10 @@ export function AssistantPanel({ ticket, onComposeReply, onNavigateToKB }: Assis
     return () => { cancelled = true; };
   }, [ticket.id]);
 
-  // Auto-expand the first inquiry once analysis completes
+  // Auto-expand first inquiry once analysis completes
   useEffect(() => {
-    if (!isAnalyzing && inquiries.length > 0 && expandedInquiry === null) {
-      setExpandedInquiry(inquiries[0].id);
+    if (!isAnalyzing && inquiries.length > 0) {
+      setExpandedInquiries(new Set([inquiries[0].id]));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAnalyzing]);
@@ -761,8 +749,8 @@ export function AssistantPanel({ ticket, onComposeReply, onNavigateToKB }: Assis
           {/* One card per detected intent */}
           <div className="space-y-2">
             {inquiries.map((inq, idx) => {
-              const style = INQUIRY_STYLE[inq.type] || INQUIRY_STYLE.general;
-              const isExpanded = expandedInquiry === inq.id;
+              const style = INQUIRY_STYLE;
+              const isExpanded = expandedInquiries.has(inq.id);
               const matches = kbMatchesByInquiry[inq.id] || [];
               const formFields = formFieldsByInquiry[inq.id] || [];
               const coverageStatus = matches.length > 0 ? 'kb' : formFields.length > 0 ? 'form' : 'none';
@@ -780,13 +768,13 @@ export function AssistantPanel({ ticket, onComposeReply, onNavigateToKB }: Assis
                     role="button"
                     tabIndex={0}
                     onClick={() => {
-                      setExpandedInquiry(isExpanded ? null : inq.id);
+                      setExpandedInquiries(prev => { const s = new Set(prev); isExpanded ? s.delete(inq.id) : s.add(inq.id); return s; });
                       setExpandedArticle(null);
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
-                        setExpandedInquiry(isExpanded ? null : inq.id);
+                        setExpandedInquiries(prev => { const s = new Set(prev); isExpanded ? s.delete(inq.id) : s.add(inq.id); return s; });
                         setExpandedArticle(null);
                       }
                     }}
@@ -811,17 +799,17 @@ export function AssistantPanel({ ticket, onComposeReply, onNavigateToKB }: Assis
 
                     {/* Coverage chip + chevron */}
                     <div className="flex items-center gap-1.5 shrink-0">
-                      {coverageStatus === 'kb' && (
+                      {guestNeedsMode === 'kb-scoring' && coverageStatus === 'kb' && (
                         <span className="text-[9px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full tabular-nums">
                           {matches.length} {matches.length === 1 ? 'article' : 'articles'}
                         </span>
                       )}
-                      {coverageStatus === 'form' && (
+                      {guestNeedsMode === 'kb-scoring' && coverageStatus === 'form' && (
                         <span className="text-[8px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-0.5 tabular-nums">
                           <Sparkles size={7} /> {formFields.length} {formFields.length === 1 ? 'field' : 'fields'}
                         </span>
                       )}
-                      {coverageStatus === 'none' && needsKb && (
+                      {guestNeedsMode === 'kb-scoring' && coverageStatus === 'none' && needsKb && (
                         <>
                           <span className="text-[8px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-0.5">
                             <AlertTriangle size={7} /> Gap
@@ -849,8 +837,28 @@ export function AssistantPanel({ ticket, onComposeReply, onNavigateToKB }: Assis
                   {isExpanded && (
                     <div className="border-t border-slate-100 bg-white">
 
-                      {/* KB article cards */}
-                      {coverageStatus === 'kb' && (
+                      {/* AI Summary mode — plain text context */}
+                      {guestNeedsMode === 'ai-context' && (
+                        <div className="px-3 py-2.5 space-y-1">
+                          {inq.context ? (
+                            inq.context.split('\n').map((line, i) => {
+                              if (!line.trim()) return null;
+                              if (line.trimStart().startsWith('•')) return (
+                                <div key={i} className="flex gap-1.5 items-start">
+                                  <span className="text-indigo-400 shrink-0 leading-snug">•</span>
+                                  <span className="text-[11px] text-slate-600 leading-snug">{line.replace(/^•\s*/, '')}</span>
+                                </div>
+                              );
+                              return <p key={i} className="text-[11px] font-semibold text-slate-500 pt-1 first:pt-0">{line}</p>;
+                            })
+                          ) : (
+                            <p className="text-[10px] text-slate-400 italic">No additional context needed.</p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* KB Matching mode — KB article cards */}
+                      {guestNeedsMode === 'kb-scoring' && coverageStatus === 'kb' && (
                         <div className="p-2.5 space-y-1.5">
                           {matches.map((m) => {
                             const cardKey = `kb-${m.entry.id}`;
@@ -916,7 +924,7 @@ export function AssistantPanel({ ticket, onComposeReply, onNavigateToKB }: Assis
                       )}
 
                       {/* Form field cards — actual values from onboarding form */}
-                      {coverageStatus === 'form' && (
+                      {guestNeedsMode === 'kb-scoring' && coverageStatus === 'form' && (
                         <div className="p-2.5 space-y-1.5">
                           {/* Subtle provenance note */}
                           <div className="flex items-center gap-1 px-0.5 mb-2">
@@ -984,7 +992,7 @@ export function AssistantPanel({ ticket, onComposeReply, onNavigateToKB }: Assis
                       )}
 
                       {/* Not covered */}
-                      {coverageStatus === 'none' && needsKb && (
+                      {guestNeedsMode === 'kb-scoring' && coverageStatus === 'none' && needsKb && (
                         <div className="p-3 space-y-2">
                           <div className="flex items-start gap-2 p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
                             <AlertTriangle size={12} className="text-amber-500 shrink-0 mt-0.5" />

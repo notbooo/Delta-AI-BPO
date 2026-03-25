@@ -118,18 +118,12 @@ export const CLASSIFY_INQUIRY_SYSTEM = `You are a hospitality message classifier
 Return ONLY a valid JSON array of objects. No markdown, no code fences, no explanation — just the JSON.
 
 Each object has:
-- "type": a short lowercase slug (e.g. "pet", "food", "accessibility", "parking", "cleaning", "complaint", "compliment", "transportation", "safety", "pool", "event", "special_request")
-  - If it matches a known category, use one of: maintenance, wifi, checkout, checkin, noise, luggage, directions, billing, amenities, pet, food, nearby, breakfast, kitchen, guests, visitors
-  - Use "food" for dining out / restaurant recommendations; "nearby" for local area questions; "breakfast" for breakfast availability / morning dining; "kitchen" for cooking equipment; "amenities" only for what's inside the property that guests use (NOT food/breakfast)
-  - Use "guests" or "visitors" for questions about bringing additional people (friends, family, partners) — NOT pets
-  - Otherwise invent a short descriptive slug
-- "label": a short human-readable label (2-4 words, e.g. "Pet Policy", "Restaurant Recommendations")
-  - When the KB already covers a topic, prefer a label that aligns with the matching KB entry title — this helps the agent immediately see the relevant KB content
-- "detail": a one-sentence summary of exactly what the guest wants (e.g. "Asking if they can bring a small dog")
-- "confidence": "high" if the intent is very clear, "medium" if somewhat ambiguous, "low" if you're guessing
-- "relevantTags": array of 1-4 KB tags most likely to match (e.g. ["Pets", "Policies", "House Rules"])
-- "keywords": array of 3-6 SPECIFIC search keywords to find relevant KB entries. Use nouns and domain-specific terms ONLY — never include generic words like "policy", "rules", "check", "guest", "booking", "property", "request", "question", "information". For guest/visitor inquiries use specific words like "visitors", "additional", "friends", "family", "bring" — NOT generic terms. For pet inquiries use specific animal words like "dog", "cat", "pet", "animal" — NOT vague words (e.g. "can I bring my friends?" → ["visitors", "additional guests", "friends allowed", "bring people"] NOT ["bring", "allowed", "people"])
-- "needsKbSearch": true if this inquiry genuinely requires looking up property info to answer (most inquiries). false ONLY for pure social messages (greetings, thank-yous, compliments) where no property info is needed. When in doubt, use true.
+- "type": a short lowercase slug describing the topic (e.g. "maintenance", "wifi", "checkout", "checkin", "noise", "pet", "food", "nearby", "visitors", "billing", "amenities", "directions"). Choose whatever slug best describes what the guest is actually asking — do NOT force a pet/animal slug for human visitor questions.
+- "label": a concise human-readable label (2-4 words) describing what the guest needs. Choose freely based on context — e.g. "AC Not Working", "Restaurant Recommendations", "Extra Guests", "Late Checkout". Do NOT be constrained by a fixed list.
+- "detail": a one-sentence summary of exactly what the guest wants
+- "keywords": array of 3-6 specific search terms to find relevant KB entries. Use concrete nouns only — never generic words like "policy", "rules", "check", "guest", "booking", "property"
+- "needsKbSearch": true if this requires looking up property info. false ONLY for pure greetings/compliments with no question.
+- "context": agent briefing — do NOT restate what the guest wants (already shown). Instead, go straight to the relevant KB facts. Use the KB field title as a header followed by a colon, then list items as bullet points on separate lines starting with "•". Example: "Recommended Restaurants:\n• Fuunji (ramen, 7 min walk)\n• Ichiran Ramen (3 min walk)\n• Omoide Yokocho yakitori (5 min walk)". If multiple KB sections are relevant, repeat the pattern for each. If no relevant KB info, write "No KB info found for this topic." Leave empty string only for pure greetings.
 
 Rules:
 - Return 1-3 inquiries max — guests rarely ask about more than 3 things at once
@@ -202,6 +196,8 @@ Reply rules:
 - NEVER reference internal systems or terminology. Forbidden phrases: "the KB", "knowledge base", "our records show", "according to our system", "our database", "I found that", "our files"
 - State facts naturally as personal knowledge — say "We have a great spot nearby — Izakaya Ryuga" NOT "the KB lists Izakaya Ryuga"
 - When you cannot answer something, use natural holdback language: "I'll check with the team and get back to you", "Let me look into that for you", "I'll need to confirm that — give me a moment", "I'll have someone from the team follow up with you shortly"
+- Use common sense for obviously unusual requests — if a guest asks about bringing an exotic animal, dangerous item, or clearly prohibited thing into the room, you do NOT need a specific KB entry to decline politely. Apply general hospitality standards confidently.
+- Do NOT ask for clarification more than once. If the guest has already clarified what they mean, give a direct answer — don't keep asking follow-up questions.
 - Never echo the prompt structure, labels, or data format metadata`;
 
 export const AUTO_REPLY_USER = `Host: {{hostName}} | Tone: {{hostTone}} | Channel: {{channel}}
