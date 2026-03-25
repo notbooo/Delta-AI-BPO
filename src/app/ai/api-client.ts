@@ -355,7 +355,7 @@ export async function classifyInquiries(opts: {
     userPrompt: opts.userPrompt,
     model: opts.model,
     temperature: 0.2,
-    maxTokens: 384,
+    maxTokens: 1500,
     touchpoint: 'classify-inquiry',
   });
 }
